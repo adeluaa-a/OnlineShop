@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: onlineshop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: onlineshop
+      POSTGRES_PASSWORD: onlineshop
+      POSTGRES_DB: users_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:8
+    container_name: onlineshop-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  redis:
+    image: redis:7
+    container_name: onlineshop-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  kafka:
+    image: apache/kafka:latest
+    container_name: onlineshop-kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+
+      KAFKA_LISTENERS: CONTROLLER://localhost:9091,PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9091
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+  object-storage:
+    image: chrislusf/seaweedfs:latest
+    container_name: onlineshop-object-storage
+    restart: unless-stopped
+    command: server -dir=/data -s3
+    ports:
+      - "8333:8333"
+      - "9333:9333"
+    volumes:
+      - object_storage_data:/data
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  object_storage_data:
