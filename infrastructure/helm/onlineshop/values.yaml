@@ -29,3 +29,6 @@ external:
   redisUrl: redis://host.docker.internal:6379
   kafkaBrokers: host.docker.internal:9092
   s3Endpoint: http://172.18.0.2:8333
+
+istio:
+  enabled: true

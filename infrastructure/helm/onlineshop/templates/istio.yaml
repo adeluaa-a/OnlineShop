@@ -1,0 +1,58 @@
+{{- if .Values.istio.enabled }}
+{{- range $name, $svc := .Values.services }}
+{{- if or (eq $name "user") (eq $name "product") (eq $name "order") }}
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: {{ $name }}-service
+  namespace: {{ $.Values.namespace }}
+spec:
+  host: {{ $name }}-service.{{ $.Values.namespace }}.svc.cluster.local
+  trafficPolicy:
+    connectionPool:
+      http:
+        http1MaxPendingRequests: 10
+        maxRequestsPerConnection: 2
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 5s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 100
+{{- end }}
+{{- end }}
+
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: onlineshop-retries
+  namespace: {{ .Values.namespace }}
+spec:
+  hosts:
+    - user-service
+    - product-service
+    - order-service
+  http:
+    - route:
+        - destination:
+            host: user-service
+      retries:
+        attempts: 3
+        perTryTimeout: 1s
+        retryOn: connect-failure,refused-stream,unavailable,5xx
+    - route:
+        - destination:
+            host: product-service
+      retries:
+        attempts: 3
+        perTryTimeout: 1s
+        retryOn: connect-failure,refused-stream,unavailable,5xx
+    - route:
+        - destination:
+            host: order-service
+      retries:
+        attempts: 3
+        perTryTimeout: 1s
+        retryOn: connect-failure,refused-stream,unavailable,5xx
+{{- end }}
