@@ -159,3 +159,7 @@ vite.config.ts.timestamp-*
 
 # Local configuration overrides
 docker-compose.override.yml
+# Terraform local files
+.terraform/
+*.tfstate
+*.tfstate.*

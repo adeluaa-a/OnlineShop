@@ -1,10 +1,18 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+} from '@nestjs/common';
 
 import { ProductsService } from './products.service';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+  ) {}
 
   @Post()
   create(
@@ -27,5 +35,27 @@ export class ProductsController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.productsService.findOne(id);
+  }
+
+  @Post(':id/reserve')
+  reserveStock(
+    @Param('id') id: string,
+    @Body() body: { quantity: number },
+  ) {
+    return this.productsService.reserveStock(
+      id,
+      body.quantity,
+    );
+  }
+
+  @Post(':id/release')
+  releaseStock(
+    @Param('id') id: string,
+    @Body() body: { quantity: number },
+  ) {
+    return this.productsService.releaseStock(
+      id,
+      body.quantity,
+    );
   }
 }

@@ -1,0 +1,31 @@
+﻿namespace: onlineshop
+
+services:
+  user:
+    image: onlineshop/user-service:1.0
+    port: 3000
+    replicas: 1
+  product:
+    image: onlineshop/product-service:1.0
+    port: 3001
+    replicas: 1
+  order:
+    image: onlineshop/order-service:1.0
+    port: 3002
+    replicas: 1
+  notification:
+    image: onlineshop/notification-service:1.0
+    port: 3003
+    replicas: 1
+
+  
+external:
+  postgresHost: host.docker.internal
+  postgresPort: "5433"
+  postgresUser: onlineshop
+  postgresPassword: onlineshop
+  postgresDatabase: users_db
+  mongoUrl: mongodb://host.docker.internal:27017/products_db
+  redisUrl: redis://host.docker.internal:6379
+  kafkaBrokers: host.docker.internal:9092
+  s3Endpoint: http://172.18.0.2:8333

@@ -1,0 +1,72 @@
+﻿{{- range $name, $svc := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}-service
+  namespace: {{ $.Values.namespace }}
+spec:
+  replicas: {{ $svc.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $name }}-service
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}-service
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: {{ $svc.image }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: {{ $svc.port }}
+          env:
+            - name: PORT
+              value: {{ $svc.port | quote }}
+
+            {{- if or (eq $name "user") (eq $name "order") }}
+            - name: DB_HOST
+              value: {{ $.Values.external.postgresHost | quote }}
+            - name: DB_PORT
+              value: {{ $.Values.external.postgresPort | quote }}
+            - name: DB_USER
+              value: {{ $.Values.external.postgresUser | quote }}
+            - name: DB_PASSWORD
+              value: {{ $.Values.external.postgresPassword | quote }}
+            - name: DB_NAME
+              value: {{ $.Values.external.postgresDatabase | quote }}
+            {{- end }}
+
+            {{- if eq $name "order" }}
+            - name: S3_ENDPOINT
+              value: {{ $.Values.external.s3Endpoint | quote }}
+            {{- end }}
+
+            {{- if eq $name "product" }}
+            - name: MONGO_URL
+              value: {{ $.Values.external.mongoUrl | quote }}
+            - name: REDIS_URL
+              value: {{ $.Values.external.redisUrl | quote }}
+            {{- end }}
+
+            {{- if or (eq $name "order") (eq $name "notification") }}
+            - name: KAFKA_BROKERS
+              value: {{ $.Values.external.kafkaBrokers | quote }}
+            {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}-service
+  namespace: {{ $.Values.namespace }}
+spec:
+  selector:
+    app: {{ $name }}-service
+  ports:
+    - name: http
+      port: {{ $svc.port }}
+      targetPort: http
+  type: ClusterIP
+{{- end }}

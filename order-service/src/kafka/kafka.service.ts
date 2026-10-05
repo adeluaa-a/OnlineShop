@@ -1,4 +1,4 @@
-import {
+﻿import {
   Injectable,
   OnModuleDestroy,
   OnModuleInit,
@@ -12,7 +12,7 @@ export class KafkaService implements OnModuleInit, OnModuleDestroy {
   constructor() {
     const kafka = new Kafka({
       clientId: 'order-service',
-      brokers: ['localhost:9092'],
+      brokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
     });
 
     this.producer = kafka.producer();

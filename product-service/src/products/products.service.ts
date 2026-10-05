@@ -1,4 +1,5 @@
-import {
+﻿import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   OnModuleDestroy,
@@ -19,7 +20,7 @@ export class ProductsService implements OnModuleInit, OnModuleDestroy {
     private readonly productModel: Model<ProductDocument>,
   ) {
     this.redisClient = createClient({
-      url: 'redis://localhost:6379',
+      url: process.env.REDIS_URL || 'redis://localhost:6379',
     });
 
     this.redisClient.on('error', (error) => {
@@ -29,7 +30,6 @@ export class ProductsService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     await this.redisClient.connect();
-
     console.log('Redis connected');
   }
 
@@ -46,7 +46,6 @@ export class ProductsService implements OnModuleInit, OnModuleDestroy {
     stock: number;
   }) {
     const product = new this.productModel(data);
-
     return product.save();
   }
 
@@ -56,19 +55,13 @@ export class ProductsService implements OnModuleInit, OnModuleDestroy {
 
   async findOne(id: string) {
     const cacheKey = `product:${id}`;
-
-    // Проверяем Redis
     const cachedProduct = await this.redisClient.get(cacheKey);
-
-    console.log('REDIS VALUE:', cachedProduct);
 
     if (cachedProduct) {
       console.log(`REDIS CACHE HIT: ${cacheKey}`);
-
       return JSON.parse(cachedProduct);
     }
 
-    // Если в Redis ничего нет — читаем MongoDB
     console.log(`REDIS CACHE MISS: ${cacheKey}`);
 
     const product = await this.productModel.findById(id).lean();
@@ -77,17 +70,81 @@ export class ProductsService implements OnModuleInit, OnModuleDestroy {
       throw new NotFoundException('Product not found');
     }
 
-    // Сохраняем товар в Redis на 5 минут
     await this.redisClient.set(
       cacheKey,
       JSON.stringify(product),
-      {
-        EX: 300,
-      },
+      { EX: 300 },
     );
 
     console.log(`REDIS CACHE SET: ${cacheKey}`);
 
     return product;
   }
+
+  async reserveStock(id: string, quantity: number) {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new BadRequestException(
+        'Quantity must be a positive integer',
+      );
+    }
+
+    const product = await this.productModel
+      .findOneAndUpdate(
+        {
+          _id: id,
+          stock: { $gte: quantity },
+        },
+        {
+          $inc: { stock: -quantity },
+        },
+        {
+          new: true,
+        },
+      )
+      .lean();
+
+    if (!product) {
+      const exists = await this.productModel.exists({ _id: id });
+
+      if (!exists) {
+        throw new NotFoundException('Product not found');
+      }
+
+      throw new BadRequestException('Insufficient product stock');
+    }
+
+    await this.redisClient.del(`product:${id}`);
+
+    return product;
+  }
+
+  async releaseStock(id: string, quantity: number) {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new BadRequestException(
+        'Quantity must be a positive integer',
+      );
+    }
+
+    const product = await this.productModel
+      .findByIdAndUpdate(
+        id,
+        {
+          $inc: { stock: quantity },
+        },
+        {
+          new: true,
+          runValidators: true,
+        },
+      )
+      .lean();
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.redisClient.del(`product:${id}`);
+
+    return product;
+  }
 }
+
