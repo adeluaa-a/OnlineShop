@@ -1,4 +1,5 @@
 {{- if .Values.istio.enabled }}
+
 {{- range $name, $svc := .Values.services }}
 {{- if or (eq $name "user") (eq $name "product") (eq $name "order") }}
 ---
@@ -26,13 +27,11 @@ spec:
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
-  name: onlineshop-retries
+  name: user-service-retries
   namespace: {{ .Values.namespace }}
 spec:
   hosts:
     - user-service
-    - product-service
-    - order-service
   http:
     - route:
         - destination:
@@ -41,6 +40,17 @@ spec:
         attempts: 3
         perTryTimeout: 1s
         retryOn: connect-failure,refused-stream,unavailable,5xx
+
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: product-service-retries
+  namespace: {{ .Values.namespace }}
+spec:
+  hosts:
+    - product-service
+  http:
     - route:
         - destination:
             host: product-service
@@ -48,6 +58,17 @@ spec:
         attempts: 3
         perTryTimeout: 1s
         retryOn: connect-failure,refused-stream,unavailable,5xx
+
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: order-service-retries
+  namespace: {{ .Values.namespace }}
+spec:
+  hosts:
+    - order-service
+  http:
     - route:
         - destination:
             host: order-service
@@ -55,4 +76,5 @@ spec:
         attempts: 3
         perTryTimeout: 1s
         retryOn: connect-failure,refused-stream,unavailable,5xx
+
 {{- end }}
